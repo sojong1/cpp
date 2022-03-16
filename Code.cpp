@@ -77,7 +77,9 @@ int main()
 
 				ss >> dx1 >> dy1 >> dx2 >> dy2 >> dx >> dy >> button;
 				std::cout << micro << " " << dx1 << " " << dy1 << " " << dx2 << " " << dy2 << " " << dx << " " << dy << " " << button << std::endl;
-				theta_converter(dx1, dy1, dx2, dy2, button, ++cnt);
+				
+				if (cnt<20000)
+					theta_converter(dx1, dy1, dx2, dy2, button, ++cnt);
 			}
 
 			int curPos = ss.tellg();
