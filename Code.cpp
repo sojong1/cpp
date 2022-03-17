@@ -8,23 +8,23 @@
 #include <sstream>
 #include <vector>
 
-const int D = 72; //mm
+const float D = 2.834646; //inch
 const int CPI = 1200;
 
-float R = 180 / (3.14159265358979323846 * D * CPI);
+const float R = 180.0 / (3.14159265358979323846 * D * CPI);
 
-float theta[20000];
+float theta[40000];
 // [ [dxi, dyi] , [dxi+1, dyi+1] ….   ]
-float dmove[20000][2];
+float dmove[40000][2];
 // [ [xi, yi] , [xi+1, yi+1] ….   ]
-float move[20000][2];
+float move[40000][2];
 
-void theta_converter(int dx1, int dy1, int dx2, int dy2, int buttonState, int index) {
-	if (dx1 == 0 && dx2 == 0)
+void theta_converter(int dx1, int dy1, int dx2, int dy2, int buttonState1, int buttonState2, int index) {
+	if (dx1 + dx2 == 0)
 	{
 		theta[index] = theta[index - 1];
-		dmove[index][0] = 0;
-		dmove[index][1] = 0;
+		dmove[index][0] = 0.0;
+		dmove[index][1] = 0.0;
 		move[index][0] = move[index - 1][0];
 		move[index][1] = move[index - 1][1];
 
@@ -32,14 +32,14 @@ void theta_converter(int dx1, int dy1, int dx2, int dy2, int buttonState, int in
 	}
 
 	float delta_theta = (dx1 + dx2) * R;
-	theta[index] = theta[index - 1] + (delta_theta / 2);
+	theta[index] = theta[index - 1] + (delta_theta / 2.0);
 
 	dmove[index][0] = cos(theta[index]) * dx1 - sin(theta[index]) * dy1;
 	dmove[index][1] = sin(theta[index]) * dx1 + cos(theta[index]) * dy1;
-	move[index][0] = move[index - 1][0] + (delta_theta / (2 * sin(delta_theta / 2))) * dmove[index][0];
-	move[index][1] = move[index - 1][1] + (delta_theta / (2 * sin(delta_theta / 2))) * dmove[index][1];
+	move[index][0] = move[index - 1][0] + (delta_theta / (2.0 * sin(delta_theta / 2.0))) * dmove[index][0];
+	move[index][1] = move[index - 1][1] + (delta_theta / (2.0 * sin(delta_theta / 2.0))) * dmove[index][1];
 
-	theta[index] = theta[index] + delta_theta / 2;
+	theta[index] = theta[index] + delta_theta / 2.0;
 }
 
 // application reads from the specified serial port and reports the collected data
@@ -60,8 +60,13 @@ int main()
 	ss.clear();
 	ss.str("");
 	long micro;
-	int dx1, dy1, dx2, dy2, dx, dy, button(0);
+	int dx1, dy1, dx2, dy2;
+	int button[2] = { 0, 0 };
 	int cnt = 0;
+
+	if (SP->IsConnected()) //to ignore first line of data which is a bug time to time
+		while(readResult != 0)
+			readResult = SP->ReadData(incomingData, 100);
 
 	while (SP->IsConnected())
 	{
@@ -75,34 +80,37 @@ int main()
 			while (ss.tellg() != -1 && ss.str().size() - ss.tellg() >= 70)
 			{
 				ss >> micro;
-				while (micro < 10000000 && ss.tellg() != -1) //micro의 범위를 알아내서 구체화할 필요 있음
+				while (micro < 100000 && ss.tellg() != -1) //micro의 범위를 알아내서 구체화할 필요 있음
 					ss >> micro;
 
-				ss >> dx1 >> dy1 >> dx2 >> dy2 >> dx >> dy >> button;
-				std::cout << micro << " " << dx1 << " " << dy1 << " " << dx2 << " " << dy2 << " " << dx << " " << dy << " " << button << std::endl;
+				ss >> dx1 >> dy1 >> dx2 >> dy2 >> button[0] >> button[1];
+
+				//printing incoming values
+				//std::cout << micro << " " << dx1 << " " << dy1 << " " << dx2 << " " << dy2 << " " << button[0] << " " << button[1] << std::endl;
 				
-				if (cnt<20000)
-					theta_converter(dx1, dy1, dx2, dy2, button, ++cnt);
+				if (cnt<40000)
+				{
+					theta_converter(dx1, dy1, -dx2, dy2, button[0], button[1], ++cnt);
+					std::cout << std::setw(5) << cnt << ") " << "x: " << std::setw(20) << move[cnt][0]
+						<< ", y: " << std::setw(20) << move[cnt][1]
+						<< ", theta: " << std::setw(20) << theta[cnt] << std::endl;
+				}
 			}
 
 			int curPos = ss.tellg();
 			if (curPos == -1)
 			{
 				std::cout << "ERROR: reaching the end of buffer" << std::endl;
-				ss.clear();
 				ss.str("");
+				ss.clear();
 			}
 			else
 				ss.str(ss.str().substr(ss.tellg()));
 
-			if (button == 2) break;
+			//If right-clicked, break the loop
+			if (button[1] == 1) break;
 		}
 	}
-
-	for (int i = 0; i < 1000; i++)
-		std::cout << std::setw(5) << i << ") " << "x: " << std::setw(20) << move[i][0]
-		<< ", y: " << std::setw(20) << move[i][1]
-		<< ", theta: " << std::setw(20) << theta[i] << std::endl;
 
 	return 0;
 }
