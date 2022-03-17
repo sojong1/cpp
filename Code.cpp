@@ -8,10 +8,10 @@
 #include <sstream>
 #include <vector>
 
-const int D = 72; //mm
+const float D = 2.834646; //inch
 const int CPI = 1200;
 
-float R = 180 / (3.14159265358979323846 * D * CPI);
+const float R = 180 / (3.14159265358979323846 * D * CPI);
 
 float theta[20000];
 // [ [dxi, dyi] , [dxi+1, dyi+1] ¡¦.   ]
@@ -20,7 +20,7 @@ float dmove[20000][2];
 float move[20000][2];
 
 void theta_converter(int dx1, int dy1, int dx2, int dy2, int buttonState, int index) {
-	if (dx1 == 0 && dx2 == 0)
+	if (dx1 - dx2 == 0)
 	{
 		theta[index] = theta[index - 1];
 		dmove[index][0] = 0;
@@ -31,7 +31,7 @@ void theta_converter(int dx1, int dy1, int dx2, int dy2, int buttonState, int in
 		return;
 	}
 
-	float delta_theta = (dx1 + dx2) * R;
+	float delta_theta = (dx1 - dx2) * R;
 	theta[index] = theta[index - 1] + (delta_theta / 2);
 
 	dmove[index][0] = cos(theta[index]) * dx1 - sin(theta[index]) * dy1;
