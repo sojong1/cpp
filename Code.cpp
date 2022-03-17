@@ -11,13 +11,16 @@
 const float D = 2.834646; //inch
 const int CPI = 1200;
 
+
 const float R = 180.0 / (3.14159265358979323846 * D * CPI);
 
+
 float theta[40000];
-// [ [dxi, dyi] , [dxi+1, dyi+1] ¡¦.   ]
+// [ [dxi, dyi] , [dxi+1, dyi+1] â€¦.   ]
 float dmove[40000][2];
-// [ [xi, yi] , [xi+1, yi+1] ¡¦.   ]
+// [ [xi, yi] , [xi+1, yi+1] â€¦.   ]
 float move[40000][2];
+
 
 void theta_converter(int dx1, int dy1, int dx2, int dy2, int buttonState1, int buttonState2, int index) {
 	if (dx1 + dx2 == 0)
@@ -31,8 +34,10 @@ void theta_converter(int dx1, int dy1, int dx2, int dy2, int buttonState1, int b
 		return;
 	}
 
+
 	float delta_theta = (dx1 + dx2) * R;
 	theta[index] = theta[index - 1] + (delta_theta / 2.0);
+
 
 	dmove[index][0] = cos(theta[index]) * dx1 - sin(theta[index]) * dy1;
 	dmove[index][1] = sin(theta[index]) * dx1 + cos(theta[index]) * dy1;
@@ -80,7 +85,7 @@ int main()
 			while (ss.tellg() != -1 && ss.str().size() - ss.tellg() >= 70)
 			{
 				ss >> micro;
-				while (micro < 100000 && ss.tellg() != -1) //microÀÇ ¹üÀ§¸¦ ¾Ë¾Æ³»¼­ ±¸Ã¼È­ÇÒ ÇÊ¿ä ÀÖÀ½
+				while (micro < 100000 && ss.tellg() != -1) //microì˜ ë²”ìœ„ë¥¼ ì•Œì•„ë‚´ì„œ êµ¬ì²´í™”í•  í•„ìš” ìžˆìŒ
 					ss >> micro;
 
 				ss >> dx1 >> dy1 >> dx2 >> dy2 >> button[0] >> button[1];
