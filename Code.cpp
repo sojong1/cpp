@@ -14,11 +14,10 @@ const int CPI = 1200;
 
 const float R = 180.0 / (3.14159265358979323846 * D * CPI);
 
-
 float theta[2];
-// [ [dxi, dyi] , [dxi+1, dyi+1] â€¦.   ]
+// [ [dxi, dyi] , [dxi+1, dyi+1] ¡¦.   ]
 float dmove[2][2];
-// [ [xi, yi] , [xi+1, yi+1] â€¦.   ]
+// [ [xi, yi] , [xi+1, yi+1] ¡¦.   ]
 float move[2][2];
 
 void theta_converter(int dx1, int dy1, int dx2, int dy2, int buttonState1, int buttonState2, int index) {
@@ -36,7 +35,6 @@ void theta_converter(int dx1, int dy1, int dx2, int dy2, int buttonState1, int b
 	}
 
 	float delta_theta = (dx1 + dx2) * R;
-
 	theta[index] = theta[previousIndex] + (delta_theta / 2.0);
 
 	dmove[index][0] = cos(theta[index]) * dx1 - sin(theta[index]) * dy1;
@@ -97,25 +95,27 @@ int main()
 			while (ss.tellg() != -1 && ss.str().size() - ss.tellg() >= 70)
 			{
 				ss >> micro;
-				while (micro < 1000000 && ss.tellg() != -1) //microì˜ ë²”ìœ„ë¥¼ ì•Œì•„ë‚´ì„œ êµ¬ì²´í™”í•  í•„ìš” ìžˆìŒ
+				while (micro < 1000000 && ss.tellg() != -1) //microÀÇ ¹üÀ§¸¦ ¾Ë¾Æ³»¼­ ±¸Ã¼È­ÇÒ ÇÊ¿ä ÀÖÀ½
 					ss >> micro;
 
 				ss >> dx1 >> dy1 >> dx2 >> dy2 >> button[0] >> button[1];
 				cnt = (cnt + 1) % 2;
 
 				//printing received values
-				//std::cout << micro << " " << dx1 << " " << dy1 << " " << dx2 << " " << dy2 << " " << button[0] << " " << button[1] << std::endl;
-
+				//std::cout << micro << " " << ss.tellg() << " " << dx1 << " " << dy1 << " " << dx2 << " " << dy2 << " " << button[0] << " " << button[1] << std::endl;
 
 				if (ss.tellg() == -1)
 					theta_converter(0, 0, 0, 0, 0, 0, cnt);
 				else
 					theta_converter(dx1, dy1, -dx2, dy2, button[0], button[1], cnt);
 
+				
 				std::cout << std::setw(10) << micro << ") " << "x: " << std::setw(20) << move[cnt][0]
 					<< ", y: " << std::setw(20) << move[cnt][1]
 					<< ", theta: " << std::setw(20) << theta[cnt] << std::endl;
-				fout << micro << " " << move[cnt][0] << " " << move[cnt][1] << " " << theta[cnt] << std::end;
+				
+				
+				fout << micro << " " << move[cnt][0] << " " << move[cnt][1] << " " << theta[cnt] << std::endl;
 			}
 
 			int curPos = ss.tellg();
