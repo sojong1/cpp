@@ -11,19 +11,22 @@
 
 const float D = 2.834646; //inch
 const int CPI = 1200;
+const float PI = 3.14159265358979323846;
+const float R = 180.0 / (PI * D * CPI);
 
-const float R = 180.0 / (3.14159265358979323846 * D * CPI);
-
+float move[2][2]; // [ [xi, yi] , [xi+1, yi+1] ・.   ]
+float dmove[2][2]; // [ [dxi, dyi] , [dxi+1, dyi+1] ・.   ]
 float theta[2];
-// [ [dxi, dyi] , [dxi+1, dyi+1] ・.   ]
-float dmove[2][2];
-// [ [xi, yi] , [xi+1, yi+1] ・.   ]
-float move[2][2];
+
+float degree_to_rad(float degree)
+{
+	return degree * PI / 180;
+}
 
 void theta_converter(int dx1, int dy1, int dx2, int dy2, int buttonState1, int buttonState2, int index) {
 	int previousIndex = (index + 1) % 2;
 
-	if (dx1 + dx2 == 0)
+	if (dx1 + dx2 == 0) //no rotation
 	{
 		theta[index] = theta[previousIndex];
 		dmove[index][0] = 0.0;
@@ -37,10 +40,10 @@ void theta_converter(int dx1, int dy1, int dx2, int dy2, int buttonState1, int b
 	float delta_theta = (dx1 + dx2) * R;
 	theta[index] = theta[previousIndex] + (delta_theta / 2.0);
 
-	dmove[index][0] = cos(theta[index]) * dx1 - sin(theta[index]) * dy1;
-	dmove[index][1] = sin(theta[index]) * dx1 + cos(theta[index]) * dy1;
-	move[index][0] = move[previousIndex][0] + (delta_theta / (2.0 * sin(delta_theta / 2.0))) * dmove[index][0];
-	move[index][1] = move[previousIndex][1] + (delta_theta / (2.0 * sin(delta_theta / 2.0))) * dmove[index][1];
+	dmove[index][0] = cos(degree_to_rad(theta[index])) * dx1 - sin(degree_to_rad(theta[index])) * dy1;
+	dmove[index][1] = sin(degree_to_rad(theta[index])) * dx1 + cos(degree_to_rad(theta[index])) * dy1;
+	move[index][0] = move[previousIndex][0] + (delta_theta / (2.0 * sin(degree_to_rad(delta_theta / 2.0)))) * dmove[index][0];
+	move[index][1] = move[previousIndex][1] + (delta_theta / (2.0 * sin(degree_to_rad(delta_theta / 2.0)))) * dmove[index][1];
 
 	theta[index] = theta[index] + delta_theta / 2.0;
 }
