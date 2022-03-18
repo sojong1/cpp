@@ -93,7 +93,7 @@ int Serial::ReadData(char* buffer, unsigned int nbChar)
     ClearCommError(this->hSerial, &this->errors, &this->status);
 
     //Check if there is something to read
-    if (this->status.cbInQue > nbChar)
+    if (this->status.cbInQue > 0)
     {
         //If there is we check if there is enough data to read the required number
         //of characters, if not we'll read only the available characters to prevent
