@@ -40,11 +40,16 @@ if __name__ == '__main__':
         msg = msg.decode('utf-8')
         temp = msg.split(' ')
         screen.fill(white)
+        
+        if(temp[0] == 'END'):
+            print("Program is terminating")
+            quit()
+            
         if(msg) :
             pos_x, pos_y , rotate = float(temp[0]), float(temp[1]), float(temp[2])
             clock.tick(1000)
             rotated = pygame.transform.rotate(img, -rotate)
             player_rect =img.get_rect()
-            current_pos= (SCREEN_WIDTH / 4 + pos_x/500, SCREEN_HEIGHT / 4 + pos_y/500)
+            current_pos= (SCREEN_WIDTH / 4 + pos_x/750, SCREEN_HEIGHT / 4 + pos_y/750)
             screen.blit(rotated, current_pos)
             pygame.display.update()
