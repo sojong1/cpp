@@ -113,7 +113,7 @@ int main()
 							<< ", theta: " << std::setw(10) << theta[cnt] << std::endl;
 						
 						//send packet
-						sprintf_s(Buffer, "%lf %lf %lf\n", move[cnt][0], move[cnt][1], theta[cnt]);
+						sprintf_s(Buffer, "%lf %lf %lf \n", move[cnt][0], move[cnt][1], theta[cnt]);
 
 						Send_Size = sendto(ClientSocket, Buffer, BUFFER_SIZE, 0,
 							(struct sockaddr*)&ToServer, sizeof(ToServer));
@@ -139,9 +139,6 @@ int main()
 			
 			//std::cout << inputState;
 
-			//print to file
-			//fout << move[cnt][0] << " " << move[cnt][1] << " " << theta[cnt] << std::endl;
-
 			//If right-clicked, break the loop
 			if (button[1] == 1)
 			{
@@ -152,7 +149,7 @@ int main()
 	}
 
 	//프로그램 종료 전 "END"가 담긴 패킷을 보냄
-	sprintf_s(Buffer, "END");
+	sprintf_s(Buffer, "END ");
 
 	Send_Size = sendto(ClientSocket, Buffer, BUFFER_SIZE, 0,
 		(struct sockaddr*)&ToServer, sizeof(ToServer));
