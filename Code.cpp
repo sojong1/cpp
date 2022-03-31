@@ -18,12 +18,20 @@ const int CPI = 1200;
 const double PI = 3.14159265358979323846;
 const double R = 180.0 / (PI * D * CPI);
 
+double l1 = 500000, l2 = 500000, l3 = 3;//링크의 길이이므로 무조건 길이를 설정해야 한다.
+double x, y;
+double a1, a2;
+double degree1, degree2, degree3;//각도 1,2,3
+
 double move[2][2]; // [ [xi, yi] , [xi+1, yi+1] ….   ]
 double dmove[2][2]; // [ [dxi, dyi] , [dxi+1, dyi+1] ….   ]
 double theta[2];
 
 double degree_to_rad(double degree);
+double rad_to_degree(double rad);
 void theta_converter(int dx1, int dy1, int dx2, int dy2, int buttonState1, int buttonState2, int index);
+
+void _2dof_inversekinematics(double x, double y);
 
 // application reads from the specified serial port and reports the collected data
 int main()
@@ -75,6 +83,7 @@ int main()
 	int cnt = 0;
 	std::string inputState = "";
 	std::string num = "0";
+	move[0][0] = move[0][1] = 0;
 
 	while (SP->IsConnected())
 	{
@@ -107,11 +116,17 @@ int main()
 						theta_converter(dx1, dy1, -dx2, dy2, button[0], button[1], cnt);
 						//std::cout << " " << dx1 << " " << dx2 << " " << dy1 << " " << dy2 << " " << button[0] << " " << button[1] << std::endl;
 
-						
+						_2dof_inversekinematics(move[cnt][0], move[cnt][1]);
 						std::cout << "x: " << std::setw(10) << move[cnt][0]
 							<< ", y: " << std::setw(10) << move[cnt][1]
-							<< ", theta: " << std::setw(10) << theta[cnt] << std::endl;
+							<< ", theta1: " << std::setw(10) << degree1
+							<< " theta2: " << std::setw(10) << degree2 << std::endl;
 						
+						/*std::cout << "x: " << std::setw(10) << move[cnt][0]
+							<< ", y: " << std::setw(10) << move[cnt][1]
+							<< ", theta: " << std::setw(10) << theta[cnt] << std::endl;
+						*/
+
 						//send packet
 						sprintf_s(Buffer, "%lf %lf %lf \n", move[cnt][0], move[cnt][1], theta[cnt]);
 
@@ -166,6 +181,11 @@ double degree_to_rad(double degree)
 	return degree * PI / 180;
 }
 
+double rad_to_degree(double rad)
+{
+	return (rad * 180 / PI);
+}
+
 void theta_converter(int dx1, int dy1, int dx2, int dy2, int buttonState1, int buttonState2, int index) {
 	int previousIndex = (index + 1) % 2;
 
@@ -180,13 +200,25 @@ void theta_converter(int dx1, int dy1, int dx2, int dy2, int buttonState1, int b
 		return;
 	}
 
-	double delta_theta = static_cast<double>(dx1 + dx2) * R;
+	double delta_theta = (static_cast<double>(dx1) + static_cast<double>(dx2)) * R;
 	theta[index] = theta[previousIndex] + (delta_theta / 2.0);
 
 	dmove[index][0] = cos(degree_to_rad(theta[index])) * dx1 - sin(degree_to_rad(theta[index])) * dy1;
 	dmove[index][1] = sin(degree_to_rad(theta[index])) * dx1 + cos(degree_to_rad(theta[index])) * dy1;
-	move[index][0] = move[previousIndex][0] + (delta_theta / (2.0 * sin(degree_to_rad(delta_theta / 2.0)))) * dmove[index][0];
-	move[index][1] = move[previousIndex][1] + (delta_theta / (2.0 * sin(degree_to_rad(delta_theta / 2.0)))) * dmove[index][1];
+	move[index][0] = move[previousIndex][0] + ((delta_theta / (2.0 * sin(degree_to_rad(delta_theta / 2.0)))) * dmove[index][0])/1200.0;
+	move[index][1] = move[previousIndex][1] + ((delta_theta / (2.0 * sin(degree_to_rad(delta_theta / 2.0)))) * dmove[index][1])/1200.0;
 
 	theta[index] = theta[index] + delta_theta / 2.0;
+}
+
+void _2dof_inversekinematics(double x, double y)//기구학을 이용한 좌표계산
+{
+	double k = ((pow(x, 2) + pow(y, 2) - pow(l1, 2) - pow(l2, 2)) / (2 * l1 * l2));
+	a2 = (atan2(sqrt(1 - pow(k, 2)), k));
+	a1 = atan2(y, x) - atan2(l2 * sin(a2), l1 + l2 * cos(a2));
+
+	a1 *= 180 / PI;//radian to degree
+	a2 *= 180 / PI;//radian to degree
+	degree1 = a1;
+	degree2 = a2;
 }
