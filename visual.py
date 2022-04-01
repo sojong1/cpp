@@ -50,6 +50,7 @@ if __name__ == '__main__':
             clock.tick(1000)
             rotated = pygame.transform.rotate(img, -rotate)
             player_rect =img.get_rect()
-            current_pos= (SCREEN_WIDTH / 4 + pos_x, SCREEN_HEIGHT / 4 + pos_y)
+            #print(40*pos_x, -40*pos_y, 10*pos_x, -10*pos_y)
+            current_pos= (SCREEN_WIDTH/4+30*pos_x, SCREEN_HEIGHT*5/7-30*pos_y)
             screen.blit(rotated, current_pos)
             pygame.display.update()
