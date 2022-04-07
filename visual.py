@@ -51,6 +51,6 @@ if __name__ == '__main__':
             rotated = pygame.transform.rotate(img, -rotate)
             player_rect =img.get_rect()
             #print(40*pos_x, -40*pos_y, 10*pos_x, -10*pos_y)
-            current_pos= (SCREEN_WIDTH/4+30*pos_x, SCREEN_HEIGHT*5/7-30*pos_y)
+            current_pos= (SCREEN_WIDTH/2+40*pos_x, SCREEN_HEIGHT/2-40*pos_y)
             screen.blit(rotated, current_pos)
             pygame.display.update()

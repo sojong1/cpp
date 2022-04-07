@@ -8,54 +8,57 @@
 #include <cmath>
 #include <vector>
 #include <fstream>
-#include "SerialClass.h"	// Library described above
+#include "SerialClass.h"	
+#pragma comment (lib,"ws2_32.lib")
 
-#pragma comment (lib,"ws2_32.lib") // 윈속 라이브러리 링크
-#define BUFFER_SIZE 64 // 버퍼 사이즈 default=1024
 
+#define BUFFER_SIZE 64 //버퍼 생성 시에만 사용 default=1024
 const double D = 2.834646; //inch
-const int CPI = 1200;
+const double CPI = 1200.0;
 const double PI = 3.14159265358979323846;
 const double R = 180.0 / (PI * D * CPI);
 
-double l1 = 5, l2 = 8, l3 = 3; //링크의 길이이므로 무조건 길이를 설정해야 한다.
-double x, y;
-double a1, a2;
-double degree1, degree2, degree3; //각도 1,2,3
 
 double move[2][2]; // [ [xi, yi] , [xi+1, yi+1] ….   ]
 double dmove[2][2]; // [ [dxi, dyi] , [dxi+1, dyi+1] ….   ]
 double theta[2];
 
+double l1 = 5; //길이 미리 지정해야함
+double l2 = 8;
+double l3 = 3; 
+double degree1, degree2, degree3;
+
+
+//단위 변환
 double degree_to_rad(double degree);
 double rad_to_degree(double rad);
+
+//mouse에서 받은 input을 사용해서 move, dmove, theta를 계산
 void theta_converter(int dx1, int dy1, int dx2, int dy2, int buttonState1, int buttonState2, int index);
 
+//inverse kinematics
 void _2dof_inversekinematics(double x, double y);
 void _3dof_inversekinematics(double x, double y, double degree);//역기구학을 푸는 힘수
 
-// application reads from the specified serial port and reports the collected data
+
 int main()
 {
 	//connect serial port
 	printf("Welcome to the serial test app!\n\n");
-	Serial* SP = new Serial("\\\\.\\COM5");    // adjust as needed
+	Serial* SP = new Serial("\\\\.\\COM5");    // 사용자 pc에 맞춰서 변경해야함
 
 	if (SP->IsConnected())
 		std::cout << "We're connected\n" << std::endl;
 
-
 	//make socket
-	WSADATA wsaData; // 윈속 데이터 구조체
-	SOCKET ClientSocket; // 소켓 선언
-	SOCKADDR_IN ToServer; // 서버로 보내는 주소정보 구조체
-
+	WSADATA wsaData;
+	SOCKET ClientSocket;
+	SOCKADDR_IN ToServer;
 	int Send_Size;
 	ULONG   ServerPort = 61557; // 서버 포트번호
 
 	char Buffer[BUFFER_SIZE] = {};
-	//sprintf_s(Buffer, "STOP,%.2lf\n", dd);
-	if (WSAStartup(0x202, &wsaData) == SOCKET_ERROR)
+	if (WSAStartup(0x202, &wsaData) == SOCKET_ERROR) //winSock 초기화 실패 시, 프로그램 종료
 	{
 		std::cout << "WinSock 초기화부분에서 문제 발생 " << std::endl;
 		WSACleanup();
@@ -63,14 +66,12 @@ int main()
 	}
 
 	memset(&ToServer, 0, sizeof(ToServer));
-
 	ToServer.sin_family = AF_INET;
 	ToServer.sin_addr.s_addr = inet_addr("127.0.0.1");
-	ToServer.sin_port = htons(ServerPort); // 포트번호
-
+	ToServer.sin_port = htons(ServerPort);
 	ClientSocket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);//
 
-	if (ClientSocket == INVALID_SOCKET)
+	if (ClientSocket == INVALID_SOCKET) //소켓 생성 실패 시, 프로그램 종료
 	{
 		std::cout << "소켓을 생성할수 없습니다." << std::endl;
 		closesocket(ClientSocket);
@@ -80,21 +81,21 @@ int main()
 
 
 	//receive data
-	char incomingData[2] = "";			// don't forget to pre-allocate memory
+	char incomingData[2] = "";
 	int readResult = 0;
 	int dx1(0), dy1(0), dx2(0), dy2(0);
 	int button[2] = { 0, 0 };
 	int cnt = 0;
-	int sumdy = 0;
 	std::string inputState = "";
 	std::string num = "0";
-	move[0][0] = 5;
-	move[0][1] = 11;
+	move[0][0] = 5;  //초기 x값
+	move[0][1] = 11; //초기 y값
+	std::cout << std::fixed;
+	std::cout.precision(2);
 
 	while (SP->IsConnected())
 	{
 		readResult = SP->ReadData(incomingData, 1);
-
 		if (readResult != 0)
 		{
 			char ch = incomingData[0];
@@ -122,19 +123,26 @@ int main()
 						theta_converter(dx1, dy1, dx2, dy2, button[0], button[1], cnt);
 						//std::cout << " " << dx1 << " " << dx2 << " " << dy1 << " " << dy2 << " " << button[0] << " " << button[1] << std::endl;
 
+						/*double x = move[cnt][0] / CPI;
+						double y = move[cnt][1] / CPI;*/
+
 						_3dof_inversekinematics(move[cnt][0], move[cnt][1], -theta[cnt] + 90);
 						std::cout << "x: " << std::setw(10) << move[cnt][0]
 							<< ", y: " << std::setw(10) << move[cnt][1]
-							<< ", theta1: " << std::setw(10) << degree1
-							<< ",  theta2: " << std::setw(10) << degree2
-							<< ", theta3: " << std::setw(10) << degree3 << std::endl;
-						
-						sumdy += dy1;
+							<< ", th: " << std::setw(10) << theta[cnt]
+							<< ", th1: " << std::setw(10) << degree1
+							<< ",  th2: " << std::setw(10) << degree2
+							<< ", th3: " << std::setw(10) << degree3 << std::endl;
+
+				/*		std::cout << "dx1: " << std::setw(3) << dx1
+							<< ", dx2: " << std::setw(3) << dx2
+							<< ", dy1: " << std::setw(3) << dy1
+							<< ", dy3: " << std::setw(3) << dy2
+							<< ", th: " << std::setw(5) << theta[cnt] << std::endl;*/
 						
 
 						//send packet
 						sprintf_s(Buffer, "%lf %lf %lf \n", move[cnt][0], move[cnt][1], theta[cnt]);
-
 						Send_Size = sendto(ClientSocket, Buffer, BUFFER_SIZE, 0,
 							(struct sockaddr*)&ToServer, sizeof(ToServer));
 
@@ -170,7 +178,6 @@ int main()
 
 	//프로그램 종료 전 "END"가 담긴 패킷을 보냄
 	sprintf_s(Buffer, "END ");
-
 	Send_Size = sendto(ClientSocket, Buffer, BUFFER_SIZE, 0,
 		(struct sockaddr*)&ToServer, sizeof(ToServer));
 
@@ -180,6 +187,7 @@ int main()
 	std::cout << "program is terminating" << std::endl;
 	return 0;
 }
+
 
 double degree_to_rad(double degree)
 {
@@ -193,36 +201,27 @@ double rad_to_degree(double rad)
 
 void theta_converter(int dx1, int dy1, int dx2, int dy2, int buttonState1, int buttonState2, int index) {
 	int previousIndex = (index + 1) % 2;
-
-	if (dx1 + dx2 == 0) //no rotation
-	{
-		theta[index] = theta[previousIndex];
-		dmove[index][0] = 0.0;
-		dmove[index][1] = 0.0;
-		move[index][0] = move[previousIndex][0];
-		move[index][1] = move[previousIndex][1];
-
-		return;
-	}
-
 	double delta_theta = (static_cast<double>(dx1) + static_cast<double>(dx2)) * R;
+	std::cout << "d_th: " << delta_theta << " ";
 	theta[index] = theta[previousIndex] + (delta_theta / 2.0);
 
 	//std::cout << degree_to_rad(delta_theta) / (2.0 * sin(degree_to_rad(delta_theta / 2.0))) << std::endl;
+	double th = degree_to_rad(theta[index]);
+	double d_th = degree_to_rad(delta_theta);
 
-	dmove[index][0] = (cos(degree_to_rad(theta[index])) * dx1 - sin(degree_to_rad(theta[index])) * dy1) / 1200.0;
-	dmove[index][1] = (sin(degree_to_rad(theta[index])) * dx1 + cos(degree_to_rad(theta[index])) * dy1) / 1200.0;
-	move[index][0] = move[previousIndex][0] + (degree_to_rad(delta_theta) / (2.0 * sin(degree_to_rad(delta_theta / 2.0)))) * dmove[index][0];
-	move[index][1] = move[previousIndex][1] + (degree_to_rad(delta_theta) / (2.0 * sin(degree_to_rad(delta_theta / 2.0)))) * dmove[index][1];
+	dmove[index][0] = (cos(th) * dx1 + sin(th) * dy1) / CPI;
+	dmove[index][1] = (-1 * sin(th) * dx1 + cos(th) * dy1) / CPI;
+	for (int i = 0; i < 2; i++)
+		move[index][i] = move[previousIndex][i] + (d_th == 0 ? 1 : (d_th / (2.0 * sin(d_th / 2.0)))) * dmove[index][i];
 
 	theta[index] = theta[index] + delta_theta / 2.0;
 }
 
-void _2dof_inversekinematics(double x, double y)//기구학을 이용한 좌표계산
+void _2dof_inversekinematics(double x, double y)
 {
 	double k = ((pow(x, 2) + pow(y, 2) - pow(l1, 2) - pow(l2, 2)) / (2 * l1 * l2));
-	a2 = (atan2(sqrt(1 - pow(k, 2)), k));
-	a1 = atan2(y, x) - atan2(l2 * sin(a2), l1 + l2 * cos(a2));
+	double a2 = (atan2(sqrt(1 - pow(k, 2)), k));
+	double a1 = atan2(y, x) - atan2(l2 * sin(a2), l1 + l2 * cos(a2));
 
 	a1 *= 180 / PI;//radian to degree
 	a2 *= 180 / PI;//radian to degree
