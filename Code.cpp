@@ -17,15 +17,14 @@ const double D = 2.834646; //inch
 const double CPI = 1200.0;
 const double PI = 3.14159265358979323846;
 const double R = 180.0 / (PI * D * CPI);
+const double l1 = 5; //길이 미리 지정해야함
+const double l2 = 8;
+const double l3 = 3;
+const int TERM = 50;
 
-
-double move[2][2]; // [ [xi, yi] , [xi+1, yi+1] ….   ]
-double dmove[2][2]; // [ [dxi, dyi] , [dxi+1, dyi+1] ….   ]
-double theta[2];
-
-double l1 = 5; //길이 미리 지정해야함
-double l2 = 8;
-double l3 = 3; 
+double move[TERM][2]; // [ [xi, yi] , [xi+1, yi+1] ….   ]
+double dmove[TERM][2]; // [ [dxi, dyi] , [dxi+1, dyi+1] ….   ]
+double theta[TERM];
 double degree1, degree2, degree3;
 
 
@@ -40,6 +39,8 @@ void theta_converter(int dx1, int dy1, int dx2, int dy2, int buttonState1, int b
 void _2dof_inversekinematics(double x, double y);
 void _3dof_inversekinematics(double x, double y, double degree);//역기구학을 푸는 힘수
 
+//평균이 패드 중앙에 오도록 조정
+void diffMean(double centerX, double centerY, double centerTheta);
 
 int main()
 {
@@ -79,6 +80,8 @@ int main()
 		exit(0);
 	}
 
+	std::cout << std::fixed;
+	std::cout.precision(2);
 
 	//receive data
 	char incomingData[2] = "";
@@ -86,12 +89,11 @@ int main()
 	int dx1(0), dy1(0), dx2(0), dy2(0);
 	int button[2] = { 0, 0 };
 	int cnt = 0;
+	bool isOnSurface = true;
 	std::string inputState = "";
 	std::string num = "0";
-	move[0][0] = 5;  //초기 x값
-	move[0][1] = 11; //초기 y값
-	std::cout << std::fixed;
-	std::cout.precision(2);
+	move[0][0] = l1;  //초기 x값
+	move[0][1] = l2 + l3; //초기 y값
 
 	while (SP->IsConnected())
 	{
@@ -100,6 +102,12 @@ int main()
 		{
 			char ch = incomingData[0];
 			//std::cout << ch;
+
+			if (!isOnSurface && ch != 'f') //if end of clutching
+			{
+				isOnSurface = true;
+				std::cout << "end of clutching" << std::endl;
+			}
 			
 			switch (ch)
 			{
@@ -112,6 +120,9 @@ int main()
 			case 'b':
 				inputState += ch;
 				break;
+			case 'f':
+				isOnSurface = false;
+				break;
 			default:
 				if (inputState == "n") num += ch;
 				else
@@ -119,20 +130,22 @@ int main()
 					if (inputState == "xa")
 					{
 						button[1] = stoi(num);
-						cnt = (cnt + 1) % 2;
+
+						//TERM 마다, x, y, theta의 평균이 l1, l2 + l3, 0이 되도록 조정
+						if (cnt == TERM - 1) diffMean(l1, l2 + l3, 0);
+
+						cnt = (cnt + 1) % TERM;
 						theta_converter(dx1, dy1, dx2, dy2, button[0], button[1], cnt);
 						//std::cout << " " << dx1 << " " << dx2 << " " << dy1 << " " << dy2 << " " << button[0] << " " << button[1] << std::endl;
 
-						/*double x = move[cnt][0] / CPI;
-						double y = move[cnt][1] / CPI;*/
-
 						_3dof_inversekinematics(move[cnt][0], move[cnt][1], -theta[cnt] + 90);
-						std::cout << "x: " << std::setw(10) << move[cnt][0]
-							<< ", y: " << std::setw(10) << move[cnt][1]
-							<< ", th: " << std::setw(10) << theta[cnt]
-							<< ", th1: " << std::setw(10) << degree1
-							<< ",  th2: " << std::setw(10) << degree2
-							<< ", th3: " << std::setw(10) << degree3 << std::endl;
+						std::cout << "timer: " << std::setw(5) << cnt
+							<< ", x: " << std::setw(5) << move[cnt][0]
+							<< ", y: " << std::setw(5) << move[cnt][1]
+							<< ", th: " << std::setw(5) << theta[cnt]
+							<< ", th1: " << std::setw(5) << degree1
+							<< ",  th2: " << std::setw(5) << degree2
+							<< ", th3: " << std::setw(5) << degree3 << std::endl;
 
 				/*		std::cout << "dx1: " << std::setw(3) << dx1
 							<< ", dx2: " << std::setw(3) << dx2
@@ -164,7 +177,7 @@ int main()
 					num = ch;
 				}
 			}
-			
+
 			//std::cout << inputState;
 
 			//If right-clicked, break the loop
@@ -200,9 +213,8 @@ double rad_to_degree(double rad)
 }
 
 void theta_converter(int dx1, int dy1, int dx2, int dy2, int buttonState1, int buttonState2, int index) {
-	int previousIndex = (index + 1) % 2;
+	int previousIndex = index == 0 ? TERM - 1 : index - 1;
 	double delta_theta = (static_cast<double>(dx1) + static_cast<double>(dx2)) * R;
-	std::cout << "d_th: " << delta_theta << " ";
 	theta[index] = theta[previousIndex] + (delta_theta / 2.0);
 
 	//std::cout << degree_to_rad(delta_theta) / (2.0 * sin(degree_to_rad(delta_theta / 2.0))) << std::endl;
@@ -234,4 +246,21 @@ void _3dof_inversekinematics(double x, double y, double degree)
 	_2dof_inversekinematics(x - l3 * cos(degree_to_rad(degree)), y - l3 * sin(degree_to_rad(degree)));
 	//std::cout << x - l3 * cos(degree_to_rad(degree)) << " " << y - l3 * sin(degree_to_rad(degree)) << std::endl;
 	degree3 = degree - (degree1 + degree2);
+}
+
+void diffMean(double centerX, double centerY, double centerTheta)
+{
+	int half = TERM / 2;
+
+	double sumX = 0, sumY = 0, sumTh = 0;
+	for (int i = half; i < TERM; i++)
+	{
+		sumX += move[i][0];
+		sumY += move[i][1];
+		sumTh += theta[i];
+	}
+
+	move[TERM - 1][0] -= sumX / half - centerX;
+	move[TERM - 1][1] -= sumY / half - centerY;
+	theta[TERM - 1] -= sumTh / half - centerTheta;
 }
