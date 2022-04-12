@@ -41,6 +41,8 @@ void _3dof_inversekinematics(double x, double y, double degree);//역기구학을 푸�
 
 //평균이 패드 중앙에 오도록 조정
 void diffMean(double centerX, double centerY, double centerTheta);
+//x,y,theta 값을 초기화
+void reset(int cnt);
 
 int main()
 {
@@ -89,7 +91,6 @@ int main()
 	int dx1(0), dy1(0), dx2(0), dy2(0);
 	int button[2] = { 0, 0 };
 	int cnt = 0;
-	bool isOnSurface = true;
 	std::string inputState = "";
 	std::string num = "0";
 	move[0][0] = l1;  //초기 x값
@@ -101,16 +102,14 @@ int main()
 		if (readResult != 0)
 		{
 			char ch = incomingData[0];
-			//std::cout << ch;
-
-			if (!isOnSurface && ch != 'f') //if end of clutching
-			{
-				isOnSurface = true;
-				std::cout << "end of clutching" << std::endl;
-			}
+			std::cout << ch;
 			
 			switch (ch)
 			{
+			case 'f':
+				std::cout << "end of clutching" << std::endl;
+				reset(cnt);
+				break;
 			case 'x':
 			case 'y':
 			case 'c':
@@ -119,9 +118,6 @@ int main()
 			case 'a':
 			case 'b':
 				inputState += ch;
-				break;
-			case 'f':
-				isOnSurface = false;
 				break;
 			default:
 				if (inputState == "n") num += ch;
@@ -132,7 +128,7 @@ int main()
 						button[1] = stoi(num);
 
 						//TERM 마다, x, y, theta의 평균이 l1, l2 + l3, 0이 되도록 조정
-						if (cnt == TERM - 1) diffMean(l1, l2 + l3, 0);
+						//if (cnt == TERM - 1) diffMean(l1, l2 + l3, 0);
 
 						cnt = (cnt + 1) % TERM;
 						theta_converter(dx1, dy1, dx2, dy2, button[0], button[1], cnt);
@@ -263,4 +259,11 @@ void diffMean(double centerX, double centerY, double centerTheta)
 	move[TERM - 1][0] -= sumX / half - centerX;
 	move[TERM - 1][1] -= sumY / half - centerY;
 	theta[TERM - 1] -= sumTh / half - centerTheta;
+}
+
+void reset(int cnt)
+{
+	move[cnt][0] = l1;
+	move[cnt][1] = l2 + l3;
+	theta[cnt] = 0;
 }
