@@ -12,7 +12,7 @@
 #pragma comment (lib,"ws2_32.lib")
 
 
-#define BUFFER_SIZE 64 //버퍼 생성 시에만 사용 default=1024
+#define BUFFER_SIZE 128 //버퍼 생성 시에만 사용 default=1024
 const double D = 2.834646; //inch
 const double CPI = 1200.0;
 const double PI = 3.14159265358979323846;
@@ -20,7 +20,7 @@ const double R = 180.0 / (PI * D * CPI);
 const double l1 = 5; //길이 미리 지정해야함
 const double l2 = 8;
 const double l3 = 3;
-const int TERM = 50;
+const int TERM = 2;
 
 double move[TERM][2]; // [ [xi, yi] , [xi+1, yi+1] ….   ]
 double dmove[TERM][2]; // [ [dxi, dyi] , [dxi+1, dyi+1] ….   ]
@@ -89,6 +89,7 @@ int main()
 	char incomingData[2] = "";
 	int readResult = 0;
 	int dx1(0), dy1(0), dx2(0), dy2(0);
+	double x1, y1, x2, y2;
 	int button[2] = { 0, 0 };
 	int cnt = 0;
 	std::string inputState = "";
@@ -102,7 +103,7 @@ int main()
 		if (readResult != 0)
 		{
 			char ch = incomingData[0];
-			std::cout << ch;
+			//std::cout << ch;
 			
 			switch (ch)
 			{
@@ -134,8 +135,16 @@ int main()
 						theta_converter(dx1, dy1, dx2, dy2, button[0], button[1], cnt);
 						//std::cout << " " << dx1 << " " << dx2 << " " << dy1 << " " << dy2 << " " << button[0] << " " << button[1] << std::endl;
 
+						x1 = l1 * cos(degree_to_rad(degree1));
+						y1 = l1 * sin(degree_to_rad(degree1));
+						x2 = x1 + l2 * cos(degree_to_rad(degree1 + degree2));
+						y2 = y1 + l2 * sin(degree_to_rad(degree1 + degree2));
+
 						_3dof_inversekinematics(move[cnt][0], move[cnt][1], -theta[cnt] + 90);
-						std::cout << "timer: " << std::setw(5) << cnt
+						std::cout << "x1: " << std::setw(5) << x1
+							<< ", y1: " << std::setw(5) << y1
+							<< ", x2: " << std::setw(5) << x2
+							<< ", y2: " << std::setw(5) << y2
 							<< ", x: " << std::setw(5) << move[cnt][0]
 							<< ", y: " << std::setw(5) << move[cnt][1]
 							<< ", th: " << std::setw(5) << theta[cnt]
@@ -149,9 +158,10 @@ int main()
 							<< ", dy3: " << std::setw(3) << dy2
 							<< ", th: " << std::setw(5) << theta[cnt] << std::endl;*/
 						
+						
 
 						//send packet
-						sprintf_s(Buffer, "%lf %lf %lf \n", move[cnt][0], move[cnt][1], theta[cnt]);
+						sprintf_s(Buffer, "%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf \n", x1, y1, x2, y2, move[cnt][0], move[cnt][1], degree1, degree2, degree3, theta[cnt]);
 						Send_Size = sendto(ClientSocket, Buffer, BUFFER_SIZE, 0,
 							(struct sockaddr*)&ToServer, sizeof(ToServer));
 
