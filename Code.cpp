@@ -8,8 +8,13 @@
 #include <cmath>
 #include <vector>
 #include <fstream>
-#include "SerialClass.h"	
+#include "SerialClass.h"
+#include "myologger.h"
 #pragma comment (lib,"ws2_32.lib")
+
+//bool PRINT_LOG = true;
+//bool RECORDING = true;
+//std::mutex myo_mutex;
 
 
 #define BUFFER_SIZE 128 //버퍼 생성 시에만 사용 default=1024
@@ -97,6 +102,14 @@ int main()
 	move[0][0] = l1;  //초기 x값
 	move[0][1] = l2 + l3; //초기 y값
 
+	std::ofstream mouseOutFile("/rawdata/mouse.csv");
+
+
+	//myo
+	std::thread* mt = new std::thread(LogMyoArmband, "myoarmband");
+
+
+
 	while (SP->IsConnected())
 	{
 		readResult = SP->ReadData(incomingData, 1);
@@ -141,7 +154,7 @@ int main()
 						y2 = y1 + l2 * sin(degree_to_rad(degree1 + degree2));
 
 						_3dof_inversekinematics(move[cnt][0], move[cnt][1], -theta[cnt] + 90);
-						std::cout << "x1: " << std::setw(5) << x1
+						/*std::cout << "x1: " << std::setw(5) << x1
 							<< ", y1: " << std::setw(5) << y1
 							<< ", x2: " << std::setw(5) << x2
 							<< ", y2: " << std::setw(5) << y2
@@ -150,7 +163,7 @@ int main()
 							<< ", th: " << std::setw(5) << theta[cnt]
 							<< ", th1: " << std::setw(5) << degree1
 							<< ",  th2: " << std::setw(5) << degree2
-							<< ", th3: " << std::setw(5) << degree3 << std::endl;
+							<< ", th3: " << std::setw(5) << degree3 << std::endl;*/
 
 				/*		std::cout << "dx1: " << std::setw(3) << dx1
 							<< ", dx2: " << std::setw(3) << dx2
@@ -202,6 +215,8 @@ int main()
 
 	closesocket(ClientSocket); //소켓 닫기
 	WSACleanup();
+
+	if (mt) mt->join();
 
 	std::cout << "program is terminating" << std::endl;
 	return 0;
