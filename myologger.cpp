@@ -5,8 +5,19 @@
 #include <fstream>
 #include <sstream>
 
+#include <chrono>
+typedef std::chrono::high_resolution_clock clock_;
+typedef std::chrono::milliseconds ms_;
+std::chrono::time_point<clock_> begin_time = clock_::now();
+
+unsigned int elapsed()
+{
+	return std::chrono::duration_cast<ms_>(clock_::now() - begin_time).count();
+}
+
 // �ϴ� �� ���丮�� �־�� ������ ������ �� �ִ�.
 static std::ofstream outFile;
+//extern std::chrono::time_point<clock_> begin_time;
 
 // Classes that inherit from myo::DeviceListener can be used to receive events from Myo devices. DeviceListener
 // provides several virtual functions for handling different kinds of events. If you do not override an event, the
@@ -137,9 +148,15 @@ public:
 		gyro_z = gyro.z();
 	}
 	
-	void log_data()
+	void log_data(unsigned int dt)
 	{
-		auto dt = 123; //tmr.elapsed(); //MilliSecFromEpoch();
+		//timer = time(NULL); // 1970�� 1�� 1�� 0�� 0�� 0�ʺ��� �����Ͽ� ��������� ��
+		//t = localtime(&timer); // �������� ���� ����ü�� �ֱ�
+
+
+		//std::string dt(std::to_string(t->tm_hour) + ":" + std::to_string(t->tm_min) + ":" + std::to_string(t->tm_sec));
+		////auto dt = 123; //tmr.elapsed(); //MilliSecFromEpoch();
+		//unsigned int dt = elapsed();
 
 		outFile << dt << ", ";
 
@@ -164,9 +181,15 @@ public:
 	}
 
 	// We define this function to print the current values that were updated by the on...() functions above.
-	void print()
+	void print(unsigned int dt)
 	{
-		auto dt = 123; //tmr.elapsed(); //MilliSecFromEpoch();
+		//timer = time(NULL); // 1970�� 1�� 1�� 0�� 0�� 0�ʺ��� �����Ͽ� ��������� ��
+		//t = localtime(&timer); // �������� ���� ����ü�� �ֱ�
+
+
+		//std::string dt(std::to_string(t->tm_hour) + ":" + std::to_string(t->tm_min) + ":" + std::to_string(t->tm_sec));
+		////auto dt = 123; //tmr.elapsed(); //MilliSecFromEpoch();
+		//unsigned int dt = elapsed();
 
 		std::cout << dt << ", ";
 
@@ -203,6 +226,10 @@ public:
 
 	// The values of this array is set by onEmgData() above.
 	std::array<int8_t, 8> emgSamples;
+
+	//for timer
+	time_t timer;
+	struct tm* t;
 };
 
 int LogMyoArmband(std::string file_name)
@@ -264,26 +291,35 @@ int LogMyoArmband(std::string file_name)
 
 		bool recordingStarted = false;
 
+		unsigned int last = elapsed();
+		unsigned int now;
+
 		// Finally we enter our main loop.
 		while (1) {
 			// In each iteration of our main loop, we run the Myo event loop for a set number of milliseconds.
 			// In this case, we wish to update our display 20 times a second, so we run for 1000/20 milliseconds. -> hub.run(1000 / 20);
 			// EMG(5ms), IMU(20ms)�ε� �츮�� ���� ª�� interval�� 5ms�� �����ϵ��� �Ѵ�.
 			// hub.run�� ��� iter���� ������ device or resource busy �߰� �α��� ���ϹǷ� ��¿������ spin�ϸ� ��� ���θ� �޾ƿ´�.
-			hub.run(5); // hub.run(1000 / 20);
+			//hub.run(20); // hub.run(1000 / 20);
 
 			// After processing events, we call the print() member function we defined above to print out the values we've
 			// obtained from any events that have occurred.
-			if (collector.onArm) {//(RECORDING) {
+			
+			if (collector.onArm) { //(RECORDING) {
 				if (!recordingStarted) {
 					std::cout << "MyoArmband : Logging Start (saved at rawdata/" + file_name + ".csv)" << std::endl;
 					recordingStarted = true;
 				}
-				collector.log_data();
-				collector.print();
+				now = elapsed();
+				if (now - last >= 20)
+				{
+					collector.log_data(now);
+					collector.print(now);
+					last = now;
+				}
 			}
 			// if _sleep, kill thread and flush logFile
-			else if (!collector.onArm) {//(UDP_DEFINED && recordingStarted) {
+			else { //(UDP_DEFINED && recordingStarted) {
 				//tmr.write_finish_time(outFile);
 				outFile.close();
 				std::cout << "MyoArmband : Finished by LoggerSlate" << std::endl;

@@ -1,6 +1,6 @@
-#include <stdio.h>
+ï»¿#include <stdio.h>
 #include <iostream>
-#include <winsock2.h> // À©¼Ó Çì´õ Æ÷ÇÔ 
+#include <winsock2.h> // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ 
 #include <windows.h> 
 #include <tchar.h>
 #include <string>
@@ -8,12 +8,11 @@
 #include <cmath>
 #include <vector>
 #include <fstream>
-#include  <stdlib.h>
 #include "SerialClass.h"
-#include <conio.h>
-#include "myologger.h"
 #include  <signal.h>
 
+#include "myologger.h"
+#include <thread>
 #pragma comment (lib,"ws2_32.lib")
 
 //bool PRINT_LOG = true;
@@ -23,67 +22,52 @@
 using std::fstream;
 using std::to_string;
 
-#define BUFFER_SIZE 128 //¹öÆÛ »ý¼º ½Ã¿¡¸¸ »ç¿ë default=1024
+#define BUFFER_SIZE 128 //ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ã¿ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ default=1024
 const double D = 2.834646; //inch
 const double CPI = 1200.0;
 const double PI = 3.14159265358979323846;
 const double R = 180.0 / (PI * D * CPI);
-const double l1 = 5; //±æÀÌ ¹Ì¸® ÁöÁ¤ÇØ¾ßÇÔ
+const double l1 = 5; //ï¿½ï¿½ï¿½ï¿½ ï¿½Ì¸ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ø¾ï¿½ï¿½ï¿½
 const double l2 = 8;
 const double l3 = 3;
 const int TERM = 2;
 
-double move[TERM][2]; // [ [xi, yi] , [xi+1, yi+1] ¡¦.   ]
-double dmove[TERM][2]; // [ [dxi, dyi] , [dxi+1, dyi+1] ¡¦.   ]
+double move[TERM][2]; // [ [xi, yi] , [xi+1, yi+1] ï¿½ï¿½.   ]
+double dmove[TERM][2]; // [ [dxi, dyi] , [dxi+1, dyi+1] ï¿½ï¿½.   ]
 double theta[TERM];
 double degree1, degree2, degree3;
 
+//extern std::chrono::time_point<clock_> begin_time;
 
 int c = 0;
 
-//´ÜÀ§ º¯È¯
+//ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½È¯
 double degree_to_rad(double degree);
 double rad_to_degree(double rad);
 
-//mouse¿¡¼­ ¹ÞÀº inputÀ» »ç¿ëÇØ¼­ move, dmove, theta¸¦ °è»ê
+//mouseï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ inputï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½Ø¼ï¿½ move, dmove, thetaï¿½ï¿½ ï¿½ï¿½ï¿½
 void theta_converter(int dx1, int dy1, int dx2, int dy2, int buttonState1, int buttonState2, int index);
+
 //inverse kinematics
 void _2dof_inversekinematics(double x, double y);
-void _3dof_inversekinematics(double x, double y, double degree);//¿ª±â±¸ÇÐÀ» Çª´Â Èû¼ö
+void _3dof_inversekinematics(double x, double y, double degree);//ï¿½ï¿½ï¿½â±¸ï¿½ï¿½ï¿½ï¿½ Çªï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 
-//Æò±ÕÀÌ ÆÐµå Áß¾Ó¿¡ ¿Àµµ·Ï Á¶Á¤
+//ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ðµï¿½ ï¿½ß¾Ó¿ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 void diffMean(double centerX, double centerY, double centerTheta);
-//x,y,theta °ªÀ» ÃÊ±âÈ­
+//x,y,theta ï¿½ï¿½ï¿½ï¿½ ï¿½Ê±ï¿½È­
 void reset(int cnt);
+
+void file_out(std::ofstream& file, int x, int y, int x1, int y1, int x2, int y2, double theta, double degree1, double degree2, double degree3);
 
 // cntr c handler
 
 void     INThandler(int);
 
-
-void file_out(std::ofstream &file, int x, int y, int x1, int y1, int x2, int y2, double theta, double degree1, double degree2, double degree3) {
-	time_t timer;
-	struct tm* t;
-	timer = time(NULL); // 1970³â 1¿ù 1ÀÏ 0½Ã 0ºÐ 0ÃÊºÎÅÍ ½ÃÀÛÇÏ¿© ÇöÀç±îÁöÀÇ ÃÊ
-	t = localtime(&timer); // Æ÷¸ËÆÃÀ» À§ÇØ ±¸Á¶Ã¼¿¡ ³Ö±â
-
-
-	std::string time_str(to_string(t->tm_hour) + ":" + to_string(t->tm_min) + ":" + to_string(t->tm_sec));
-
-	if (!file.is_open()) {
-		std::cout << "failed to open " << '\n';
-	}
-	else {
-		file << time_str << "," << to_string(x) << "," << to_string(y) << "," << to_string(x1) << "," << to_string(y1) << "," << to_string(x2) << "," << to_string(y2) << "," << to_string(theta) << "," << to_string(degree1) << "," << to_string(degree2) << "," << to_string(degree3) << std::endl;
-	}
-	std::cout << "end!" << std::endl;
-}
-
 int main()
 {
 	//connect serial port
 	printf("Welcome to the serial test app!\n\n");
-	Serial* SP = new Serial("\\\\.\\COM4");    // »ç¿ëÀÚ pc¿¡ ¸ÂÃç¼­ º¯°æÇØ¾ßÇÔ
+	Serial* SP = new Serial("\\\\.\\COM5");    // ï¿½ï¿½ï¿½ï¿½ï¿½ pcï¿½ï¿½ ï¿½ï¿½ï¿½ç¼­ ï¿½ï¿½ï¿½ï¿½ï¿½Ø¾ï¿½ï¿½ï¿½
 
 	if (SP->IsConnected())
 		std::cout << "We're connected\n" << std::endl;
@@ -93,22 +77,13 @@ int main()
 	SOCKET ClientSocket;
 	SOCKADDR_IN ToServer;
 	int Send_Size;
-	ULONG   ServerPort = 61557; // ¼­¹ö Æ÷Æ®¹øÈ£
+	ULONG   ServerPort = 61557; // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Æ®ï¿½ï¿½È£
 
-
-	// mouse log file
-	//std:ofstream fs;
-	//std::string filename("rawdata/mouse.csv");
-	//fs.open(filename, std::ios_base::out);
-	
-	//cntrl c handler
-
-	signal(SIGINT, INThandler);
 
 	char Buffer[BUFFER_SIZE] = {};
-	if (WSAStartup(0x202, &wsaData) == SOCKET_ERROR) //winSock ÃÊ±âÈ­ ½ÇÆÐ ½Ã, ÇÁ·Î±×·¥ Á¾·á
+	if (WSAStartup(0x202, &wsaData) == SOCKET_ERROR) //winSock ï¿½Ê±ï¿½È­ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½, ï¿½ï¿½ï¿½Î±×·ï¿½ ï¿½ï¿½ï¿½ï¿½
 	{
-		std::cout << "WinSock ÃÊ±âÈ­ºÎºÐ¿¡¼­ ¹®Á¦ ¹ß»ý " << std::endl;
+		std::cout << "WinSock ï¿½Ê±ï¿½È­ï¿½ÎºÐ¿ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ß»ï¿½ " << std::endl;
 		WSACleanup();
 		exit(0);
 	}
@@ -119,9 +94,9 @@ int main()
 	ToServer.sin_port = htons(ServerPort);
 	ClientSocket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);//
 
-	if (ClientSocket == INVALID_SOCKET) //¼ÒÄÏ »ý¼º ½ÇÆÐ ½Ã, ÇÁ·Î±×·¥ Á¾·á
+	if (ClientSocket == INVALID_SOCKET) //ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½, ï¿½ï¿½ï¿½Î±×·ï¿½ ï¿½ï¿½ï¿½ï¿½
 	{
-		std::cout << "¼ÒÄÏÀ» »ý¼ºÇÒ¼ö ¾ø½À´Ï´Ù." << std::endl;
+		std::cout << "ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ò¼ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï´ï¿½." << std::endl;
 		closesocket(ClientSocket);
 		WSACleanup();
 		exit(0);
@@ -129,6 +104,10 @@ int main()
 
 	std::cout << std::fixed;
 	std::cout.precision(2);
+
+	//ctrl c handler
+	signal(SIGINT, INThandler);
+
 
 	//receive data
 	char incomingData[2] = "";
@@ -139,8 +118,8 @@ int main()
 	int cnt = 0;
 	std::string inputState = "";
 	std::string num = "0";
-	move[0][0] = l1;  //ÃÊ±â x°ª
-	move[0][1] = l2 + l3; //ÃÊ±â y°ª
+	move[0][0] = l1;  //ï¿½Ê±ï¿½ xï¿½ï¿½
+	move[0][1] = l2 + l3; //ï¿½Ê±ï¿½ yï¿½ï¿½
 
 	std::ofstream mouseOutFile;
 	mouseOutFile.open("rawdata/mouse.csv");
@@ -152,119 +131,120 @@ int main()
 
 	//myo
 	std::thread* mt = new std::thread(LogMyoArmband, "myoarmband");
+	if (mt) mt->detach();
 
 
-	while (SP->IsConnected() && c!=3)
+	while (SP->IsConnected() && c != 3)
 	{
-			
-			readResult = SP->ReadData(incomingData, 1);
-			if (readResult != 0)
+		readResult = SP->ReadData(incomingData, 1);
+		if (readResult != 0)
+		{
+			char ch = incomingData[0];
+			//std::cout << ch;
+
+			switch (ch)
 			{
-				char ch = incomingData[0];
-				//std::cout << ch;
-
-				switch (ch)
+			case 'f':
+				std::cout << "end of clutching" << std::endl;
+				reset(cnt);
+				break;
+			case 'x':
+			case 'y':
+			case 'c':
+				inputState = ch;
+				break;
+			case 'a':
+			case 'b':
+				inputState += ch;
+				break;
+			default:
+				if (inputState == "n") num += ch;
+				else
 				{
-				case 'f':
-					std::cout << "end of clutching" << std::endl;
-					reset(cnt);
-					break;
-				case 'x':
-				case 'y':
-				case 'c':
-					inputState = ch;
-					break;
-				case 'a':
-				case 'b':
-					inputState += ch;
-					break;
-				default:
-					if (inputState == "n") num += ch;
-					else
+					if (inputState == "xa")
 					{
-						if (inputState == "xa")
+						button[1] = stoi(num);
+
+						//TERM ï¿½ï¿½ï¿½ï¿½, x, y, thetaï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ l1, l2 + l3, 0ï¿½ï¿½ ï¿½Çµï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
+						//if (cnt == TERM - 1) diffMean(l1, l2 + l3, 0);
+
+						cnt = (cnt + 1) % TERM;
+						theta_converter(dx1, dy1, dx2, dy2, button[0], button[1], cnt);
+						//std::cout << " " << dx1 << " " << dx2 << " " << dy1 << " " << dy2 << " " << button[0] << " " << button[1] << std::endl;
+
+						x1 = l1 * cos(degree_to_rad(degree1));
+						y1 = l1 * sin(degree_to_rad(degree1));
+						x2 = x1 + l2 * cos(degree_to_rad(degree1 + degree2));
+						y2 = y1 + l2 * sin(degree_to_rad(degree1 + degree2));
+
+						_3dof_inversekinematics(move[cnt][0], move[cnt][1], -theta[cnt] + 90);
+						file_out(mouseOutFile, move[cnt][0], move[cnt][1], x1, y1, x2, y2, theta[cnt], degree1, degree2, degree3);
+						/*std::cout << "x1: " << std::setw(5) << x1
+							<< ", y1: " << std::setw(5) << y1
+							<< ", x2: " << std::setw(5) << x2
+							<< ", y2: " << std::setw(5) << y2
+							<< ", x: " << std::setw(5) << move[cnt][0]
+							<< ", y: " << std::setw(5) << move[cnt][1]
+							<< ", th: " << std::setw(5) << theta[cnt]
+							<< ", th1: " << std::setw(5) << degree1
+							<< ",  th2: " << std::setw(5) << degree2
+							<< ", th3: " << std::setw(5) << degree3 << std::endl;*/
+
+							/*		std::cout << "dx1: " << std::setw(3) << dx1
+										<< ", dx2: " << std::setw(3) << dx2
+										<< ", dy1: " << std::setw(3) << dy1
+										<< ", dy3: " << std::setw(3) << dy2
+										<< ", th: " << std::setw(5) << theta[cnt] << std::endl;*/
+
+
+
+										//send packet
+						sprintf_s(Buffer, "%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf \n", x1, y1, x2, y2, move[cnt][0], move[cnt][1], degree1, degree2, degree3, theta[cnt]);
+						Send_Size = sendto(ClientSocket, Buffer, BUFFER_SIZE, 0,
+							(struct sockaddr*)&ToServer, sizeof(ToServer));
+
+						// ï¿½ï¿½Å¶ï¿½Û½Å½ï¿½ ï¿½ï¿½ï¿½ï¿½Ã³ï¿½ï¿½
+						if (Send_Size != BUFFER_SIZE)
 						{
-							button[1] = stoi(num);
-
-							//TERM ¸¶´Ù, x, y, thetaÀÇ Æò±ÕÀÌ l1, l2 + l3, 0ÀÌ µÇµµ·Ï Á¶Á¤
-							//if (cnt == TERM - 1) diffMean(l1, l2 + l3, 0);
-
-							cnt = (cnt + 1) % TERM;
-							theta_converter(dx1, dy1, dx2, dy2, button[0], button[1], cnt);
-							//std::cout << " " << dx1 << " " << dx2 << " " << dy1 << " " << dy2 << " " << button[0] << " " << button[1] << std::endl;
-
-							x1 = l1 * cos(degree_to_rad(degree1));
-							y1 = l1 * sin(degree_to_rad(degree1));
-							x2 = x1 + l2 * cos(degree_to_rad(degree1 + degree2));
-							y2 = y1 + l2 * sin(degree_to_rad(degree1 + degree2));
-
-							_3dof_inversekinematics(move[cnt][0], move[cnt][1], -theta[cnt] + 90);
-							file_out(mouseOutFile, move[cnt][0], move[cnt][1], x1, y1, x2, y2, theta[cnt], degree1, degree2, degree3);
-							/*std::cout << "x1: " << std::setw(5) << x1
-								<< ", y1: " << std::setw(5) << y1
-								<< ", x2: " << std::setw(5) << x2
-								<< ", y2: " << std::setw(5) << y2
-								<< ", x: " << std::setw(5) << move[cnt][0]
-								<< ", y: " << std::setw(5) << move[cnt][1]
-								<< ", th: " << std::setw(5) << theta[cnt]
-								<< ", th1: " << std::setw(5) << degree1
-								<< ",  th2: " << std::setw(5) << degree2
-								<< ", th3: " << std::setw(5) << degree3 << std::endl;*/
-
-								/*		std::cout << "dx1: " << std::setw(3) << dx1
-											<< ", dx2: " << std::setw(3) << dx2
-											<< ", dy1: " << std::setw(3) << dy1
-											<< ", dy3: " << std::setw(3) << dy2
-											<< ", th: " << std::setw(5) << theta[cnt] << std::endl;*/
-
-
-
-											//send packet
-							sprintf_s(Buffer, "%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf \n", x1, y1, x2, y2, move[cnt][0], move[cnt][1], degree1, degree2, degree3, theta[cnt]);
-							Send_Size = sendto(ClientSocket, Buffer, BUFFER_SIZE, 0,
-								(struct sockaddr*)&ToServer, sizeof(ToServer));
-
-							// ÆÐÅ¶¼Û½Å½Ã ¿¡·¯Ã³¸®
-							if (Send_Size != BUFFER_SIZE)
-							{
-								std::cout << "sendto() error!" << std::endl;
-								exit(0);
-							}
-
+							std::cout << "sendto() error!" << std::endl;
+							exit(0);
 						}
-						else if (inputState == "xb") dx1 = stoi(num);
-						else if (inputState == "ya") dx2 = -stoi(num);
-						else if (inputState == "yb") dy1 = -stoi(num);
-						else if (inputState == "ca") dy2 = -stoi(num);
-						else if (inputState == "cb") button[0] = stoi(num);
 
-						inputState = "n";
-						num = ch;
 					}
+					else if (inputState == "xb") dx1 = stoi(num);
+					else if (inputState == "ya") dx2 = -stoi(num);
+					else if (inputState == "yb") dy1 = -stoi(num);
+					else if (inputState == "ca") dy2 = -stoi(num);
+					else if (inputState == "cb") button[0] = stoi(num);
+
+					inputState = "n";
+					num = ch;
 				}
-
-				//std::cout << inputState;
-
-
-				//If right-clicked, break the loop
-				//if (button[1] == 1)
-				//{
-				//	std::cout << "right clicked, break the loop" << std::endl;
-				//	break;
-				//}
 			}
-		
+
+			/*std::cout << inputState;
+			char temp;
+			std::cin.get(temp);
+			std::cout << temp << std::endl;*/
+
+			//If right-clicked, break the loop
+			if (button[1] == 1)
+			{
+				std::cout << "right clicked, break the loop" << std::endl;
+				break;
+			}
+		}
 	}
 
-	//ÇÁ·Î±×·¥ Á¾·á Àü "END"°¡ ´ã±ä ÆÐÅ¶À» º¸³¿
+	//ï¿½ï¿½ï¿½Î±×·ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ "END"ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½ï¿½Å¶ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 	sprintf_s(Buffer, "END ");
 	Send_Size = sendto(ClientSocket, Buffer, BUFFER_SIZE, 0,
 		(struct sockaddr*)&ToServer, sizeof(ToServer));
 
-	closesocket(ClientSocket); //¼ÒÄÏ ´Ý±â
+	closesocket(ClientSocket); //ï¿½ï¿½ï¿½ï¿½ ï¿½Ý±ï¿½
 	WSACleanup();
 
-	if (mt) mt->join();
+	
 	if (mouseOutFile) mouseOutFile.close();
 
 	std::cout << "program is terminating" << std::endl;
@@ -342,6 +322,24 @@ void reset(int cnt)
 	theta[cnt] = 0;
 }
 
+void file_out(std::ofstream& file, int x, int y, int x1, int y1, int x2, int y2, double theta, double degree1, double degree2, double degree3) {
+	//time_t timer;
+	//struct tm* t;
+	//timer = time(NULL); // 1970ï¿½ï¿½ 1ï¿½ï¿½ 1ï¿½ï¿½ 0ï¿½ï¿½ 0ï¿½ï¿½ 0ï¿½Êºï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï¿ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½
+	//t = localtime(&timer); // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½Ã¼ï¿½ï¿½ ï¿½Ö±ï¿½
+
+
+	//std::string time_str(to_string(t->tm_hour) + ":" + to_string(t->tm_min) + ":" + to_string(t->tm_sec));
+	std::string time_str = to_string(elapsed());
+
+	if (!file.is_open()) {
+		std::cout << "failed to open " << '\n';
+	}
+	else {
+		file << time_str << "," << to_string(x) << "," << to_string(y) << "," << to_string(x1) << "," << to_string(y1) << "," << to_string(x2) << "," << to_string(y2) << "," << to_string(theta) << "," << to_string(degree1) << "," << to_string(degree2) << "," << to_string(degree3) << std::endl;
+	}
+	//std::cout << "end!" << std::endl;
+}
 
 void  INThandler(int sig)
 {
@@ -350,11 +348,12 @@ void  INThandler(int sig)
 	signal(sig, SIG_IGN);
 	printf("OUCH, did you hit Ctrl-C?\n"
 		"Do you really want to quit? [y/n] ");
-	 j= getchar();
-	if (j == 'y' || j== 'Y') {
+	j = getchar();
+	if (j == 'y' || j == 'Y') {
 		c = 3;
 		signal(SIGINT, INThandler);
-	}else
+	}
+	else
 		signal(SIGINT, INThandler);
 	getchar(); // Get new line character
 }

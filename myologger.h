@@ -13,6 +13,12 @@
 
 // The only file that needs to be included to use the Myo C++ SDK is myo.hpp.
 #include <myo/myo.hpp>
-#include <mutex>
+
+
+//#include <mutex>
+//std::mutex global_mutex;
+
+
+unsigned int elapsed();
 
 int LogMyoArmband(std::string file_name);
