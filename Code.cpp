@@ -9,6 +9,7 @@
 #include <vector>
 #include <fstream>
 #include "SerialClass.h"
+
 #include "myologger.h"
 #pragma comment (lib,"ws2_32.lib")
 
@@ -16,6 +17,8 @@
 //bool RECORDING = true;
 //std::mutex myo_mutex;
 
+using std::fstream;
+using std::to_string;
 
 #define BUFFER_SIZE 128 //버퍼 생성 시에만 사용 default=1024
 const double D = 2.834646; //inch
@@ -49,11 +52,29 @@ void diffMean(double centerX, double centerY, double centerTheta);
 //x,y,theta 값을 초기화
 void reset(int cnt);
 
+void file_out(std::ofstream &file, int x, int y, int x1, int y1, int x2, int y2, double theta, double degree1, double degree2, double degree3) {
+	time_t timer;
+	struct tm* t;
+	timer = time(NULL); // 1970년 1월 1일 0시 0분 0초부터 시작하여 현재까지의 초
+	t = localtime(&timer); // 포맷팅을 위해 구조체에 넣기
+
+
+	std::string time_str(to_string(t->tm_hour) + ":" + to_string(t->tm_min) + ":" + to_string(t->tm_sec));
+
+	if (!file.is_open()) {
+		std::cout << "failed to open " << '\n';
+	}
+	else {
+		file << time_str << "," << to_string(x) << "," << to_string(y) << "," << to_string(x1) << "," << to_string(y1) << "," << to_string(x2) << "," << to_string(y2) << "," << to_string(theta) << "," << to_string(degree1) << "," << to_string(degree2) << "," << to_string(degree3) << std::endl;
+	}
+	std::cout << "end!" << std::endl;
+}
+
 int main()
 {
 	//connect serial port
 	printf("Welcome to the serial test app!\n\n");
-	Serial* SP = new Serial("\\\\.\\COM5");    // 사용자 pc에 맞춰서 변경해야함
+	Serial* SP = new Serial("\\\\.\\COM4");    // 사용자 pc에 맞춰서 변경해야함
 
 	if (SP->IsConnected())
 		std::cout << "We're connected\n" << std::endl;
@@ -64,6 +85,14 @@ int main()
 	SOCKADDR_IN ToServer;
 	int Send_Size;
 	ULONG   ServerPort = 61557; // 서버 포트번호
+
+
+	// mouse log file
+	//std:ofstream fs;
+	//std::string filename("rawdata/mouse.csv");
+	//fs.open(filename, std::ios_base::out);
+
+
 
 	char Buffer[BUFFER_SIZE] = {};
 	if (WSAStartup(0x202, &wsaData) == SOCKET_ERROR) //winSock 초기화 실패 시, 프로그램 종료
@@ -102,8 +131,13 @@ int main()
 	move[0][0] = l1;  //초기 x값
 	move[0][1] = l2 + l3; //초기 y값
 
-	std::ofstream mouseOutFile("/rawdata/mouse.csv");
-
+	std::ofstream mouseOutFile;
+	mouseOutFile.open("rawdata/mouse.csv");
+	if (!mouseOutFile.is_open())
+	{
+		std::cout << "mouse not opened" << std::endl;
+		return 1;
+	}
 
 	//myo
 	std::thread* mt = new std::thread(LogMyoArmband, "myoarmband");
@@ -154,6 +188,7 @@ int main()
 						y2 = y1 + l2 * sin(degree_to_rad(degree1 + degree2));
 
 						_3dof_inversekinematics(move[cnt][0], move[cnt][1], -theta[cnt] + 90);
+						file_out(mouseOutFile, move[cnt][0], move[cnt][1], x1, y1, x2, y2, theta[cnt], degree1, degree2, degree3);
 						/*std::cout << "x1: " << std::setw(5) << x1
 							<< ", y1: " << std::setw(5) << y1
 							<< ", x2: " << std::setw(5) << x2
@@ -197,8 +232,10 @@ int main()
 				}
 			}
 
-			//std::cout << inputState;
-
+			/*std::cout << inputState;
+			char temp;
+			std::cin.get(temp);
+			std::cout << temp << std::endl;*/
 			//If right-clicked, break the loop
 			if (button[1] == 1)
 			{
@@ -217,6 +254,7 @@ int main()
 	WSACleanup();
 
 	if (mt) mt->join();
+	if (mouseOutFile) mouseOutFile.close();
 
 	std::cout << "program is terminating" << std::endl;
 	return 0;
@@ -292,3 +330,4 @@ void reset(int cnt)
 	move[cnt][1] = l2 + l3;
 	theta[cnt] = 0;
 }
+
