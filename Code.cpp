@@ -8,9 +8,12 @@
 #include <cmath>
 #include <vector>
 #include <fstream>
+#include  <stdlib.h>
 #include "SerialClass.h"
-
+#include <conio.h>
 #include "myologger.h"
+#include  <signal.h>
+
 #pragma comment (lib,"ws2_32.lib")
 
 //bool PRINT_LOG = true;
@@ -36,13 +39,14 @@ double theta[TERM];
 double degree1, degree2, degree3;
 
 
+int c = 0;
+
 //단위 변환
 double degree_to_rad(double degree);
 double rad_to_degree(double rad);
 
 //mouse에서 받은 input을 사용해서 move, dmove, theta를 계산
 void theta_converter(int dx1, int dy1, int dx2, int dy2, int buttonState1, int buttonState2, int index);
-
 //inverse kinematics
 void _2dof_inversekinematics(double x, double y);
 void _3dof_inversekinematics(double x, double y, double degree);//역기구학을 푸는 힘수
@@ -51,6 +55,11 @@ void _3dof_inversekinematics(double x, double y, double degree);//역기구학을 푸�
 void diffMean(double centerX, double centerY, double centerTheta);
 //x,y,theta 값을 초기화
 void reset(int cnt);
+
+// cntr c handler
+
+void     INThandler(int);
+
 
 void file_out(std::ofstream &file, int x, int y, int x1, int y1, int x2, int y2, double theta, double degree1, double degree2, double degree3) {
 	time_t timer;
@@ -91,8 +100,10 @@ int main()
 	//std:ofstream fs;
 	//std::string filename("rawdata/mouse.csv");
 	//fs.open(filename, std::ios_base::out);
+	
+	//cntrl c handler
 
-
+	signal(SIGINT, INThandler);
 
 	char Buffer[BUFFER_SIZE] = {};
 	if (WSAStartup(0x202, &wsaData) == SOCKET_ERROR) //winSock 초기화 실패 시, 프로그램 종료
@@ -143,106 +154,106 @@ int main()
 	std::thread* mt = new std::thread(LogMyoArmband, "myoarmband");
 
 
-
-	while (SP->IsConnected())
+	while (SP->IsConnected() && c!=3)
 	{
-		readResult = SP->ReadData(incomingData, 1);
-		if (readResult != 0)
-		{
-			char ch = incomingData[0];
-			//std::cout << ch;
 			
-			switch (ch)
+			readResult = SP->ReadData(incomingData, 1);
+			if (readResult != 0)
 			{
-			case 'f':
-				std::cout << "end of clutching" << std::endl;
-				reset(cnt);
-				break;
-			case 'x':
-			case 'y':
-			case 'c':
-				inputState = ch;
-				break;
-			case 'a':
-			case 'b':
-				inputState += ch;
-				break;
-			default:
-				if (inputState == "n") num += ch;
-				else
+				char ch = incomingData[0];
+				//std::cout << ch;
+
+				switch (ch)
 				{
-					if (inputState == "xa")
+				case 'f':
+					std::cout << "end of clutching" << std::endl;
+					reset(cnt);
+					break;
+				case 'x':
+				case 'y':
+				case 'c':
+					inputState = ch;
+					break;
+				case 'a':
+				case 'b':
+					inputState += ch;
+					break;
+				default:
+					if (inputState == "n") num += ch;
+					else
 					{
-						button[1] = stoi(num);
-
-						//TERM 마다, x, y, theta의 평균이 l1, l2 + l3, 0이 되도록 조정
-						//if (cnt == TERM - 1) diffMean(l1, l2 + l3, 0);
-
-						cnt = (cnt + 1) % TERM;
-						theta_converter(dx1, dy1, dx2, dy2, button[0], button[1], cnt);
-						//std::cout << " " << dx1 << " " << dx2 << " " << dy1 << " " << dy2 << " " << button[0] << " " << button[1] << std::endl;
-
-						x1 = l1 * cos(degree_to_rad(degree1));
-						y1 = l1 * sin(degree_to_rad(degree1));
-						x2 = x1 + l2 * cos(degree_to_rad(degree1 + degree2));
-						y2 = y1 + l2 * sin(degree_to_rad(degree1 + degree2));
-
-						_3dof_inversekinematics(move[cnt][0], move[cnt][1], -theta[cnt] + 90);
-						file_out(mouseOutFile, move[cnt][0], move[cnt][1], x1, y1, x2, y2, theta[cnt], degree1, degree2, degree3);
-						/*std::cout << "x1: " << std::setw(5) << x1
-							<< ", y1: " << std::setw(5) << y1
-							<< ", x2: " << std::setw(5) << x2
-							<< ", y2: " << std::setw(5) << y2
-							<< ", x: " << std::setw(5) << move[cnt][0]
-							<< ", y: " << std::setw(5) << move[cnt][1]
-							<< ", th: " << std::setw(5) << theta[cnt]
-							<< ", th1: " << std::setw(5) << degree1
-							<< ",  th2: " << std::setw(5) << degree2
-							<< ", th3: " << std::setw(5) << degree3 << std::endl;*/
-
-				/*		std::cout << "dx1: " << std::setw(3) << dx1
-							<< ", dx2: " << std::setw(3) << dx2
-							<< ", dy1: " << std::setw(3) << dy1
-							<< ", dy3: " << std::setw(3) << dy2
-							<< ", th: " << std::setw(5) << theta[cnt] << std::endl;*/
-						
-						
-
-						//send packet
-						sprintf_s(Buffer, "%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf \n", x1, y1, x2, y2, move[cnt][0], move[cnt][1], degree1, degree2, degree3, theta[cnt]);
-						Send_Size = sendto(ClientSocket, Buffer, BUFFER_SIZE, 0,
-							(struct sockaddr*)&ToServer, sizeof(ToServer));
-
-						// 패킷송신시 에러처리
-						if (Send_Size != BUFFER_SIZE)
+						if (inputState == "xa")
 						{
-							std::cout << "sendto() error!" << std::endl;
-							exit(0);
+							button[1] = stoi(num);
+
+							//TERM 마다, x, y, theta의 평균이 l1, l2 + l3, 0이 되도록 조정
+							//if (cnt == TERM - 1) diffMean(l1, l2 + l3, 0);
+
+							cnt = (cnt + 1) % TERM;
+							theta_converter(dx1, dy1, dx2, dy2, button[0], button[1], cnt);
+							//std::cout << " " << dx1 << " " << dx2 << " " << dy1 << " " << dy2 << " " << button[0] << " " << button[1] << std::endl;
+
+							x1 = l1 * cos(degree_to_rad(degree1));
+							y1 = l1 * sin(degree_to_rad(degree1));
+							x2 = x1 + l2 * cos(degree_to_rad(degree1 + degree2));
+							y2 = y1 + l2 * sin(degree_to_rad(degree1 + degree2));
+
+							_3dof_inversekinematics(move[cnt][0], move[cnt][1], -theta[cnt] + 90);
+							file_out(mouseOutFile, move[cnt][0], move[cnt][1], x1, y1, x2, y2, theta[cnt], degree1, degree2, degree3);
+							/*std::cout << "x1: " << std::setw(5) << x1
+								<< ", y1: " << std::setw(5) << y1
+								<< ", x2: " << std::setw(5) << x2
+								<< ", y2: " << std::setw(5) << y2
+								<< ", x: " << std::setw(5) << move[cnt][0]
+								<< ", y: " << std::setw(5) << move[cnt][1]
+								<< ", th: " << std::setw(5) << theta[cnt]
+								<< ", th1: " << std::setw(5) << degree1
+								<< ",  th2: " << std::setw(5) << degree2
+								<< ", th3: " << std::setw(5) << degree3 << std::endl;*/
+
+								/*		std::cout << "dx1: " << std::setw(3) << dx1
+											<< ", dx2: " << std::setw(3) << dx2
+											<< ", dy1: " << std::setw(3) << dy1
+											<< ", dy3: " << std::setw(3) << dy2
+											<< ", th: " << std::setw(5) << theta[cnt] << std::endl;*/
+
+
+
+											//send packet
+							sprintf_s(Buffer, "%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf \n", x1, y1, x2, y2, move[cnt][0], move[cnt][1], degree1, degree2, degree3, theta[cnt]);
+							Send_Size = sendto(ClientSocket, Buffer, BUFFER_SIZE, 0,
+								(struct sockaddr*)&ToServer, sizeof(ToServer));
+
+							// 패킷송신시 에러처리
+							if (Send_Size != BUFFER_SIZE)
+							{
+								std::cout << "sendto() error!" << std::endl;
+								exit(0);
+							}
+
 						}
-												
+						else if (inputState == "xb") dx1 = stoi(num);
+						else if (inputState == "ya") dx2 = -stoi(num);
+						else if (inputState == "yb") dy1 = -stoi(num);
+						else if (inputState == "ca") dy2 = -stoi(num);
+						else if (inputState == "cb") button[0] = stoi(num);
+
+						inputState = "n";
+						num = ch;
 					}
-					else if (inputState == "xb") dx1 = stoi(num);
-					else if (inputState == "ya") dx2 = -stoi(num);
-					else if (inputState == "yb") dy1 = -stoi(num);
-					else if (inputState == "ca") dy2 = -stoi(num);
-					else if (inputState == "cb") button[0] = stoi(num);
-
-					inputState = "n";
-					num = ch;
 				}
-			}
 
-			/*std::cout << inputState;
-			char temp;
-			std::cin.get(temp);
-			std::cout << temp << std::endl;*/
-			//If right-clicked, break the loop
-			if (button[1] == 1)
-			{
-				std::cout << "right clicked, break the loop" << std::endl;
-				break;
+				//std::cout << inputState;
+
+
+				//If right-clicked, break the loop
+				//if (button[1] == 1)
+				//{
+				//	std::cout << "right clicked, break the loop" << std::endl;
+				//	break;
+				//}
 			}
-		}
+		
 	}
 
 	//프로그램 종료 전 "END"가 담긴 패킷을 보냄
@@ -331,3 +342,19 @@ void reset(int cnt)
 	theta[cnt] = 0;
 }
 
+
+void  INThandler(int sig)
+{
+	char  j;
+
+	signal(sig, SIG_IGN);
+	printf("OUCH, did you hit Ctrl-C?\n"
+		"Do you really want to quit? [y/n] ");
+	 j= getchar();
+	if (j == 'y' || j== 'Y') {
+		c = 3;
+		signal(SIGINT, INThandler);
+	}else
+		signal(SIGINT, INThandler);
+	getchar(); // Get new line character
+}
