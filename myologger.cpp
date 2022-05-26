@@ -80,7 +80,7 @@ public:
 	void onPose(myo::Myo* myo, uint64_t timestamp, myo::Pose pose)
 	{
 		currentPose = pose;
-
+		
 		if (pose != myo::Pose::unknown && pose != myo::Pose::rest) {
 			// Tell the Myo to stay unlocked until told otherwise. We do that here so you can hold the poses without the
 			// Myo becoming locked.
@@ -130,10 +130,10 @@ public:
 	}
 
 	// There are other virtual functions in DeviceListener that we could override here, like onAccelerometerData().
-
+	
 	// onAccelerometerData is called whenever new acceleromenter data is provided
 	// Be warned: This will not make any distiction between data from other Myo armbands
-	void onAccelerometerData(myo::Myo* myo, uint64_t timestamp, const myo::Vector3< float >& accel) {
+	void onAccelerometerData(myo::Myo *myo, uint64_t timestamp, const myo::Vector3< float > &accel) {
 		accl_x = accel.x();
 		accl_y = accel.y();
 		accl_z = accel.z();
@@ -142,12 +142,12 @@ public:
 
 	// onGyroscopeData is called whenever new gyroscope data is provided
 	// Be warned: This will not make any distiction between data from other Myo armbands
-	void onGyroscopeData(myo::Myo* myo, uint64_t timestamp, const myo::Vector3< float >& gyro) {
+	void onGyroscopeData(myo::Myo *myo, uint64_t timestamp, const myo::Vector3< float > &gyro) {
 		gyro_x = gyro.x();
 		gyro_y = gyro.y();
 		gyro_z = gyro.z();
 	}
-
+	
 	void log_data(unsigned int dt)
 	{
 		//timer = time(NULL); // 1970�� 1�� 1�� 0�� 0�� 0�ʺ��� �����Ͽ� ��������� ��
@@ -232,7 +232,7 @@ public:
 	struct tm* t;
 };
 
-int LogMyoArmband(std::string file_name, std::string uname)
+int LogMyoArmband(std::string file_name)
 {
 
 
@@ -244,7 +244,7 @@ int LogMyoArmband(std::string file_name, std::string uname)
 		myo::Hub hub("com.kiml.myologger");
 
 
-
+		
 
 		std::cout << "MyoArmband : Finding a Myo..." << std::endl;
 
@@ -271,10 +271,10 @@ int LogMyoArmband(std::string file_name, std::string uname)
 		// Hub::addListener() takes the address of any object whose class inherits from DeviceListener, and will cause
 		// Hub::run() to send events to all registered device listeners.
 		hub.addListener(&collector);
-
+		
 
 		// define an ofstream for log
-		outFile = std::ofstream("rawdata/" + file_name + "_"+ uname + ".csv");
+		outFile = std::ofstream("rawdata/" + file_name + ".csv");
 		//tmr.write_epoch_time(outFile);
 
 
@@ -285,7 +285,7 @@ int LogMyoArmband(std::string file_name, std::string uname)
 			std::cout << "MyoArmband : Waiting for LoggerSlate..." << std::endl;
 			mutex->lock();
 		}*/
-
+		
 		//if (UDP_DEFINED && !RECORDING)
 		//	std::cout << "MyoArmband : Waiting for LoggerSlate..." << std::endl;
 
@@ -300,14 +300,14 @@ int LogMyoArmband(std::string file_name, std::string uname)
 			// In this case, we wish to update our display 20 times a second, so we run for 1000/20 milliseconds. -> hub.run(1000 / 20);
 			// EMG(5ms), IMU(20ms)�ε� �츮�� ���� ª�� interval�� 5ms�� �����ϵ��� �Ѵ�.
 			// hub.run�� ��� iter���� ������ device or resource busy �߰� �α��� ���ϹǷ� ��¿������ spin�ϸ� ��� ���θ� �޾ƿ´�.
-			hub.run(1); // hub.run(1000 / 20);
+			hub.run(20); // hub.run(1000 / 20);
 
 			// After processing events, we call the print() member function we defined above to print out the values we've
 			// obtained from any events that have occurred.
-
+			
 			if (collector.onArm) { //(RECORDING) {
 				if (!recordingStarted) {
-					std::cout << "MyoArmband : Logging Start (saved at rawdata/" + file_name + "_" + uname + ".csv)" << std::endl;
+					std::cout << "MyoArmband : Logging Start (saved at rawdata/" + file_name + ".csv)" << std::endl;
 					recordingStarted = true;
 				}
 				now = elapsed();

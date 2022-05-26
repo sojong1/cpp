@@ -12,6 +12,7 @@
 #include  <signal.h>
 
 #include "myologger.h"
+#include "motion_capture.h"
 #include <thread>
 #pragma comment (lib,"ws2_32.lib")
 
@@ -67,16 +68,10 @@ int main()
 {
 	//connect serial port
 	printf("Welcome to the serial test app!\n\n");
-	Serial* SP = new Serial("\\\\.\\COM4");    // ����� pc�� ���缭 �����ؾ���
+	Serial* SP = new Serial("\\\\.\\COM5");    // ����� pc�� ���缭 �����ؾ���
 
 	if (SP->IsConnected())
 		std::cout << "We're connected\n" << std::endl;
-
-	//get user name
-	std::string uname;
-	std::cout << "Enter the user name: " << std::endl;
-	std::getline(std::cin, uname);
-	std::cout << "Hello "+ uname << std::endl;
 
 	//make socket
 	WSADATA wsaData;
@@ -128,7 +123,7 @@ int main()
 	move[0][1] = l2 + l3; //�ʱ� y��
 
 	std::ofstream mouseOutFile;
-	mouseOutFile.open("rawdata/mouse_" + uname + ".csv");
+	mouseOutFile.open("rawdata/mouse.csv");
 	if (!mouseOutFile.is_open())
 	{
 		std::cout << "mouse not opened" << std::endl;
@@ -136,8 +131,14 @@ int main()
 	}
 
 	//myo
-	std::thread* mt = new std::thread(LogMyoArmband, "myoarmband", uname);
+	std::thread* mt = new std::thread(LogMyoArmband, "myoarmband");
 	if (mt) mt->detach();
+	else std::printf("Failed to start Myo Armband Thread\n");
+
+	//motion capture
+	std::thread* motive = new std::thread(logMotive);
+	if (motive) motive->detach();
+	else std::printf("Failed to start Motive Thraed\n");
 
 
 	while (SP->IsConnected() && c != 3)
@@ -234,11 +235,11 @@ int main()
 			std::cout << temp << std::endl;*/
 
 			//If right-clicked, break the loop
-			/*if (button[1] == 1)
+			if (button[1] == 1)
 			{
 				std::cout << "right clicked, break the loop" << std::endl;
 				break;
-			}*/
+			}
 		}
 	}
 
@@ -250,7 +251,7 @@ int main()
 	closesocket(ClientSocket); //���� �ݱ�
 	WSACleanup();
 
-
+	
 	if (mouseOutFile) mouseOutFile.close();
 
 	std::cout << "program is terminating" << std::endl;
